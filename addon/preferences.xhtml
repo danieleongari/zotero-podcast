@@ -1,0 +1,43 @@
+<vbox onload="initZoteroPodcastPreferences()" xmlns:html="http://www.w3.org/1999/xhtml">
+  <groupbox>
+    <label value="OpenAI API key" />
+    <html:input
+      id="zotero-podcast-api-key"
+      type="password"
+      autocomplete="off"
+      placeholder="sk-…"
+      style="width: 34em; max-width: 100%"
+    />
+    <description>
+      Stored in Zotero's encrypted credential manager. It is never saved in ordinary preferences or
+      logs.
+    </description>
+    <hbox align="center">
+      <button id="zotero-podcast-key-clear" label="Clear" />
+      <button id="zotero-podcast-key-test" label="Test connection" />
+    </hbox>
+    <description id="zotero-podcast-key-status" style="min-height: 1.4em" />
+
+    <separator class="thin" />
+    <label value="Output directory" />
+    <hbox align="center">
+      <html:input
+        id="zotero-podcast-output-directory"
+        type="text"
+        style="width: 34em; max-width: 100%"
+      />
+      <button id="zotero-podcast-output-browse" label="Choose…" />
+    </hbox>
+    <hbox align="center">
+      <button id="zotero-podcast-output-test" label="Validate folder" />
+    </hbox>
+    <description id="zotero-podcast-output-status" style="min-height: 1.4em" />
+
+    <separator class="thin" />
+    <description style="max-width: 48em">
+      Privacy notice: after you click Submit, extracted text from the selected Zotero documents is
+      sent to OpenAI to create the summary and podcast. Zotero Podcast does not send text during
+      selection preview and does not modify Zotero library items.
+    </description>
+  </groupbox>
+</vbox>

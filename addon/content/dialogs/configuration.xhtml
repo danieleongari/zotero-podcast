@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Zotero Podcast</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../styles/podcast.css" />
+    <script src="../scripts/configuration.js"></script>
+  </head>
+  <body>
+    <main class="configuration">
+      <header>
+        <div>
+          <h1>Zotero Podcast</h1>
+          <p>Create an English audio discussion from the selected full text.</p>
+        </div>
+        <div id="api-warning" class="notice warning" hidden="hidden">
+          Add an OpenAI API key in Zotero Podcast settings before submitting.
+        </div>
+      </header>
+
+      <section class="card two-column">
+        <label>
+          Podcast name
+          <input id="podcast-name" type="text" maxlength="120" placeholder="My research briefing" />
+        </label>
+        <label>
+          Preset
+          <select id="preset-select"></select>
+        </label>
+        <label>
+          Preset name
+          <input id="preset-name" type="text" maxlength="80" />
+        </label>
+        <div class="button-row align-end">
+          <button id="preset-save" type="button">Save</button>
+          <button id="preset-save-as" type="button">Save as new</button>
+          <button id="preset-reload" type="button">Reload</button>
+          <button id="preset-delete" type="button">Delete custom</button>
+        </div>
+      </section>
+
+      <section class="card two-column">
+        <label>
+          Summary model
+          <select id="summary-model"></select>
+        </label>
+        <label>
+          Podcast model
+          <select id="podcast-model"></select>
+        </label>
+        <label class="span-two">
+          Summary instructions
+          <textarea id="summary-prompt" rows="6"></textarea>
+        </label>
+        <label class="span-two">
+          Podcast instructions
+          <textarea id="podcast-prompt" rows="6"></textarea>
+        </label>
+      </section>
+
+      <section class="card three-column">
+        <label>
+          Target duration (minutes)
+          <input id="target-minutes" type="number" min="1" max="120" step="1" />
+        </label>
+        <label>
+          TTS model
+          <select id="tts-model"></select>
+        </label>
+        <label>
+          Number of speakers
+          <select id="speaker-count">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <div id="speaker-list" class="span-three speaker-list"></div>
+      </section>
+
+      <section class="card">
+        <h2>Output</h2>
+        <div class="path-row">
+          <input id="output-directory" type="text" placeholder="Choose an output directory" />
+          <button id="output-browse" type="button">Choose…</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Documents</h2>
+        <div id="source-summary" class="muted"></div>
+        <ol id="source-list" class="source-list"></ol>
+        <details id="skipped-details">
+          <summary>Skipped items</summary>
+          <ul id="skipped-list"></ul>
+        </details>
+      </section>
+
+      <section class="card">
+        <h2>Estimated OpenAI cost</h2>
+        <div id="cost-grid" class="cost-grid"></div>
+        <p class="muted">
+          Approximate, based on English text heuristics and pricing as of 2026-07-18. Actual charges
+          may differ.
+        </p>
+      </section>
+
+      <div id="form-error" class="notice error" hidden="hidden"></div>
+      <footer>
+        <button id="cancel" type="button">Cancel</button>
+        <button id="submit" type="button" class="primary">Submit</button>
+      </footer>
+    </main>
+  </body>
+</html>

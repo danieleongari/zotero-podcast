@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <title>Zotero Podcast progress</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../styles/podcast.css" />
+    <script src="../scripts/progress.js"></script>
+  </head>
+  <body>
+    <main class="progress-window">
+      <header>
+        <img src="../icons/podcast.svg" width="44" height="44" alt="" />
+        <div>
+          <h1>Zotero Podcast</h1>
+          <p id="stage-message">Preparing podcast…</p>
+        </div>
+      </header>
+      <progress id="job-progress" max="100" value="0"></progress>
+      <div class="progress-meta">
+        <span id="stage-name">Preparing</span>
+        <span id="cost-value"></span>
+      </div>
+      <div id="job-error" class="notice error" hidden="hidden"></div>
+      <div id="job-result" hidden="hidden">
+        <p id="duration-value"></p>
+        <p id="result-paths" class="paths"></p>
+        <ul id="warning-list"></ul>
+      </div>
+      <footer>
+        <button id="cancel-job" type="button">Cancel</button>
+        <button id="open-folder" type="button" hidden="hidden">Open output folder</button>
+        <button id="close-progress" type="button" hidden="hidden">Close</button>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+{
+  "name": "zotero-podcast",
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Create AI-generated podcasts from Zotero items and collections",
+  "config": {
+    "addonName": "Zotero Podcast",
+    "addonID": "zotero-podcast@danieleongari.com",
+    "addonRef": "zotero-podcast",
+    "addonInstance": "PodcastAddon",
+    "prefsPrefix": "extensions.zotero-podcast"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danieleongari/zotero-podcast.git"
+  },
+  "author": "Daniele Ongari",
+  "bugs": {
+    "url": "https://github.com/danieleongari/zotero-podcast/issues"
+  },
+  "homepage": "https://github.com/danieleongari/zotero-podcast",
+  "license": "AGPL-3.0-or-later",
+  "scripts": {
+    "start": "zotero-plugin serve",
+    "build": "zotero-plugin build && tsc --noEmit",
+    "lint:check": "prettier --check . && eslint .",
+    "lint:fix": "prettier --write . && eslint . --fix",
+    "test": "vitest run",
+    "test:zotero": "zotero-plugin test --no-watch"
+  },
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7"
+  },
+  "overrides": {
+    "adm-zip": "0.6.0",
+    "epubjs": "0.3.93"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "@zotero-plugin/eslint-config": "0.6.7",
+    "chai": "^6.2.2",
+    "eslint": "^9.39.2",
+    "prettier": "^3.7.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0",
+    "zotero-plugin-scaffold": "^0.8.7",
+    "zotero-types": "^4.1.2"
+  },
+  "prettier": {
+    "printWidth": 100,
+    "tabWidth": 2,
+    "endOfLine": "lf",
+    "overrides": [
+      {
+        "files": [
+          "*.xhtml"
+        ],
+        "options": {
+          "htmlWhitespaceSensitivity": "css"
+        }
+      }
+    ]
+  }
+}
