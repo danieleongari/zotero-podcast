@@ -1,5 +1,8 @@
 # Zotero Podcast
 
+[![CI](https://github.com/danieleongari/zotero-podcast/actions/workflows/ci.yml/badge.svg)](https://github.com/danieleongari/zotero-podcast/actions/workflows/ci.yml)
+[![Release](https://github.com/danieleongari/zotero-podcast/actions/workflows/release-please.yml/badge.svg)](https://github.com/danieleongari/zotero-podcast/actions/workflows/release-please.yml)
+
 Zotero Podcast is a Zotero 9 add-on that turns selected documents or recursive collections into an
 English, multi-voice podcast using OpenAI. It is inspired by
 [VoiceMyDocs](https://github.com/danieleongari/voicemydocs).
@@ -53,6 +56,16 @@ npm run build
 The release build appears in `.scaffold/build/zotero-podcast.xpi`, accompanied by `update.json`.
 `npm run test:zotero` runs scaffold-hosted Zotero tests when a compatible Zotero test environment is
 available.
+
+## Releases
+
+Release Please maintains the version, changelog, tag, and GitHub release from conventional commits.
+Merge its release pull request to publish a release. The release workflow builds the tagged source,
+validates the manifest version and SHA-512 update hash, and attaches `zotero-podcast.xpi` and
+`update.json` to the GitHub release.
+
+No custom repository secret is required. A published release can also be rebuilt from **Actions →
+Publish release artifacts → Run workflow** by entering its `vX.Y.Z` tag.
 
 ## Models and costs
 
