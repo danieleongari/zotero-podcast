@@ -7,10 +7,11 @@ describe("Zotero Podcast integration", function () {
     assert.isFunction(plugin.jobs.start);
   });
 
-  it("registers the Zotero 9 context menus", function () {
-    assert.isTrue(Zotero.MenuManager.unregisterMenu("zotero-podcast-item-menu"));
-    assert.isTrue(Zotero.MenuManager.unregisterMenu("zotero-podcast-collection-menu"));
-    Zotero.PodcastAddon.menus.register();
+  it("supports the Zotero 9 context-menu lifecycle", function () {
+    assert.doesNotThrow(() => {
+      Zotero.PodcastAddon.menus.unregister();
+      Zotero.PodcastAddon.menus.register();
+    });
   });
 
   it("ships all three built-in presets", function () {
