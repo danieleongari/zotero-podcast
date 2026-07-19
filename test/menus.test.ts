@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MenuService } from "../src/ui/menus";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 afterEach(() => {
   delete (globalThis as any).Zotero;
@@ -31,5 +33,13 @@ describe("Zotero menu integration", () => {
     service.unregister();
     expect(unregisterMenu).toHaveBeenCalledWith("zotero-podcast-item-menu");
     expect(unregisterMenu).toHaveBeenCalledWith("zotero-podcast-collection-menu");
+  });
+
+  it("defines the Fluent menu label as the attribute required by MenuManager", () => {
+    const fluent = readFileSync(
+      join(process.cwd(), "addon/locale/en-US/zotero-podcast.ftl"),
+      "utf8",
+    );
+    expect(fluent).toMatch(/zotero-podcast-convert\s*=\s*\n\s+\.label\s*=\s*Convert to podcast/);
   });
 });

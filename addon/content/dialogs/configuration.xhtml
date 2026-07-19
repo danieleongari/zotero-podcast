@@ -4,6 +4,7 @@
     <title>Zotero Podcast</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../styles/podcast.css" />
+    <script src="chrome://zotero/content/include.js"></script>
     <script src="../scripts/configuration.js"></script>
   </head>
   <body>
@@ -17,6 +18,16 @@
           Add an OpenAI API key in Zotero Podcast settings before submitting.
         </div>
       </header>
+
+      <section class="card documents-card">
+        <h2>Documents</h2>
+        <div id="source-summary" class="muted"></div>
+        <ul id="source-list" class="source-list"></ul>
+        <details id="skipped-details">
+          <summary>Skipped items</summary>
+          <ul id="skipped-list"></ul>
+        </details>
+      </section>
 
       <section class="card two-column">
         <label>
@@ -39,7 +50,40 @@
         </div>
       </section>
 
-      <section class="card two-column">
+      <section class="card three-column voice-card">
+        <label>
+          Target duration (minutes)
+          <input id="target-minutes" type="number" min="1" max="120" step="1" />
+        </label>
+        <label>
+          TTS model
+          <select id="tts-model"></select>
+        </label>
+        <label>
+          Number of speakers
+          <select id="speaker-count">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <div class="span-three voice-preview">
+          <div>
+            <strong>Preview the voices</strong>
+            <span class="muted">Listen to the six voice samples before assigning speakers.</span>
+          </div>
+          <audio
+            id="voice-preview"
+            controls="controls"
+            preload="metadata"
+            src="../assets/voice-samples-6-voices.mp3"
+          ></audio>
+        </div>
+        <div id="speaker-list" class="span-three speaker-list"></div>
+      </section>
+
+      <section class="card two-column summary-card">
         <label>
           Summary model
           <select id="summary-model"></select>
@@ -58,43 +102,12 @@
         </label>
       </section>
 
-      <section class="card three-column">
-        <label>
-          Target duration (minutes)
-          <input id="target-minutes" type="number" min="1" max="120" step="1" />
-        </label>
-        <label>
-          TTS model
-          <select id="tts-model"></select>
-        </label>
-        <label>
-          Number of speakers
-          <select id="speaker-count">
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-          </select>
-        </label>
-        <div id="speaker-list" class="span-three speaker-list"></div>
-      </section>
-
       <section class="card">
         <h2>Output</h2>
         <div class="path-row">
           <input id="output-directory" type="text" placeholder="Choose an output directory" />
           <button id="output-browse" type="button">Choose…</button>
         </div>
-      </section>
-
-      <section class="card">
-        <h2>Documents</h2>
-        <div id="source-summary" class="muted"></div>
-        <ol id="source-list" class="source-list"></ol>
-        <details id="skipped-details">
-          <summary>Skipped items</summary>
-          <ul id="skipped-list"></ul>
-        </details>
       </section>
 
       <section class="card">

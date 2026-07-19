@@ -2,6 +2,7 @@ import { DISCLOSURE, DURATION_TOLERANCE, WORDS_PER_MINUTE } from "../constants";
 import { actualCost, estimateCost } from "../pricing";
 import type { PodcastJobRequest, PodcastJobResult, ProgressState, Usage } from "../types";
 import { splitForSpeech, stripSourceMarkers, wordCount } from "../utils/text";
+import { abortError, createAbortController } from "../utils/runtime";
 import { encodeMP3 } from "./audio";
 import { CredentialService } from "./credentials";
 import { OpenAIClient, renderSummary, renderTranscript, scriptTurnsWithDisclosure } from "./openai";
@@ -57,17 +58,17 @@ export class JobManager {
     onProgress: (state: ProgressState) => void,
   ): Promise<PodcastJobResult> {
     if (this.running) throw new Error("A podcast is already being generated.");
-    const apiKey = this.credentials.get();
-    if (!apiKey) throw new Error("Add an OpenAI API key in Zotero Podcast settings.");
-
     this.running = true;
     this.cancelRequested = false;
-    this.abortController = new AbortController();
+    this.abortController = createAbortController();
     const signal = this.abortController.signal;
-    const client = new OpenAIClient(apiKey, signal);
     let paths: OutputPaths | undefined;
 
     try {
+      const apiKey = await this.credentials.get();
+      if (!apiKey) throw new Error("Add an OpenAI API key in Zotero Podcast settings.");
+      const client = new OpenAIClient(apiKey, signal);
+
       onProgress({ stage: "preparing", percent: 2, message: "Validating output directory…" });
       await validateOutputDirectory(request.outputDirectory);
       paths = await allocateOutputPaths(request.outputDirectory, request.name);
@@ -155,7 +156,7 @@ export class JobManager {
         },
         signal,
       );
-      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
+      if (signal.aborted) throw abortError();
 
       const usage: Usage = {
         inputTokens: summarized.usage.inputTokens + scripted.usage.inputTokens,
@@ -189,7 +190,7 @@ export class JobManager {
         renderTranscript(scripted.script, preset),
         signal,
       );
-      if (signal.aborted) throw new DOMException("Cancelled", "AbortError");
+      if (signal.aborted) throw abortError();
 
       const result: PodcastJobResult = {
         podcastPath: paths.podcast,

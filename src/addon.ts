@@ -8,6 +8,7 @@ import { SelectionService } from "./services/selection";
 import { SettingsService } from "./services/settings";
 import { MenuService } from "./ui/menus";
 import { WindowManager } from "./ui/windowManager";
+import { createAbortController, runtimeClearTimeout, runtimeSetTimeout } from "./utils/runtime";
 
 class Addon {
   public data: {
@@ -40,25 +41,25 @@ class Addon {
     };
   }
 
-  getAPIKey(): string {
+  async getAPIKey(): Promise<string> {
     return this.credentials.get();
   }
 
-  setAPIKey(value: string): void {
-    this.credentials.set(value);
+  async setAPIKey(value: string): Promise<void> {
+    await this.credentials.set(value);
   }
 
-  clearAPIKey(): void {
-    this.credentials.clear();
+  async clearAPIKey(): Promise<void> {
+    await this.credentials.clear();
   }
 
   async testAPIKey(value: string): Promise<void> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15_000);
+    const controller = createAbortController();
+    const timer = runtimeSetTimeout(() => controller.abort(), 15_000);
     try {
       await new OpenAIClient(value.trim(), controller.signal).testConnection();
     } finally {
-      clearTimeout(timer);
+      runtimeClearTimeout(timer);
     }
   }
 

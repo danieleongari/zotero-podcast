@@ -45,6 +45,7 @@ export interface SourceMetadata {
   attachmentKey: string;
   libraryID: number;
   title: string;
+  filename: string;
   parentTitle?: string;
   creators?: string;
   year?: string;
@@ -147,6 +148,7 @@ export interface ConfigurationSubmission {
   name: string;
   preset: PodcastPresetV1;
   outputDirectory: string;
+  includedSourceIDs: string[];
 }
 
 export interface ConfigurationController {
@@ -155,10 +157,11 @@ export interface ConfigurationController {
   lastPresetID: string;
   outputDirectory: string;
   hasAPIKey: boolean;
-  estimate(preset: PodcastPresetV1): CostBreakdown;
+  estimate(preset: PodcastPresetV1, includedSourceIDs: string[]): CostBreakdown;
   savePreset(preset: PodcastPresetV1): PodcastPresetV1[];
   deletePreset(id: string): PodcastPresetV1[];
   browseOutputDirectory(): Promise<string | null>;
+  openSource(attachmentID: number): Promise<void>;
   submit(submission: ConfigurationSubmission): Promise<void>;
 }
 

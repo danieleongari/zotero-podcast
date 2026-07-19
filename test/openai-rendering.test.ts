@@ -25,6 +25,7 @@ const source: SourceDocument = {
   attachmentKey: "ABC",
   libraryID: 1,
   title: "Attachment",
+  filename: "paper.pdf",
   parentTitle: "Research paper",
   contentType: "application/pdf",
   text: "Evidence",

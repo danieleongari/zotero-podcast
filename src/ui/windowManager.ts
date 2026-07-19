@@ -13,6 +13,9 @@ import { JobManager } from "../services/jobManager";
 import { SelectionService } from "../services/selection";
 import { SettingsService } from "../services/settings";
 import { validateOutputDirectory } from "../services/output";
+import { isAbortError } from "../utils/runtime";
+
+const CHROME_ROOT = "chrome://zotero-podcast/content/";
 
 function alert(title: string, message: string): void {
   (Services as any).prompt.alert(Zotero.getMainWindow(), title, message);
@@ -28,9 +31,8 @@ class ProgressHost {
   };
 
   constructor(rootURI: string, controller: ProgressController) {
-    this.window = (Services as any).ww.openWindow(
-      Zotero.getMainWindow(),
-      `${rootURI}content/dialogs/progress.xhtml`,
+    this.window = (Zotero.getMainWindow() as any).openDialog(
+      `${CHROME_ROOT}dialogs/progress.xhtml`,
       "zotero-podcast-progress",
       "chrome,dialog=no,resizable,centerscreen,width=520,height=390",
       { wrappedJSObject: controller },
@@ -128,7 +130,7 @@ export class WindowManager {
         );
         return;
       }
-      this.openConfiguration(preview);
+      await this.openConfiguration(preview);
     } catch (error) {
       progress.close();
       const message = error instanceof Error ? error.message : String(error);
@@ -136,7 +138,7 @@ export class WindowManager {
     }
   }
 
-  private openConfiguration(preview: SelectionPreview): void {
+  private async openConfiguration(preview: SelectionPreview): Promise<void> {
     if (this.configurationWindow && !this.configurationWindow.closed) {
       this.configurationWindow.focus();
       return;
@@ -147,16 +149,28 @@ export class WindowManager {
       presets: this.settings.getPresets(),
       lastPresetID: this.settings.lastPresetID,
       outputDirectory: this.settings.outputDirectory,
-      hasAPIKey: this.credentials.has(),
-      estimate: (preset) => estimateCost(preview.sources, preset),
+      hasAPIKey: await this.credentials.has(),
+      estimate: (preset, includedSourceIDs) => {
+        const included = new Set(includedSourceIDs);
+        return estimateCost(
+          preview.sources.filter((source) => included.has(source.sourceID)),
+          preset,
+        );
+      },
       savePreset: (preset) => this.settings.savePreset(preset),
       deletePreset: (id) => this.settings.deletePreset(id),
       browseOutputDirectory: () => this.browseOutputDirectory(),
+      openSource: async (attachmentID) => {
+        const mainWindow = Zotero.getMainWindow() as any;
+        if (!mainWindow?.ZoteroPane) {
+          throw new Error("The Zotero library window is unavailable.");
+        }
+        await mainWindow.ZoteroPane.viewAttachment(attachmentID);
+      },
       submit: (submission) => this.submit(preview, submission),
     };
-    this.configurationWindow = (Services as any).ww.openWindow(
-      Zotero.getMainWindow(),
-      `${this.rootURI}content/dialogs/configuration.xhtml`,
+    this.configurationWindow = (Zotero.getMainWindow() as any).openDialog(
+      `${CHROME_ROOT}dialogs/configuration.xhtml`,
       "zotero-podcast-configuration",
       "chrome,dialog=no,resizable,centerscreen,width=1000,height=820",
       { wrappedJSObject: controller },
@@ -177,7 +191,10 @@ export class WindowManager {
     if (!this.ensureIdle()) throw new Error("A podcast is already being generated.");
     if (!submission.name.trim()) throw new Error("Enter a podcast name.");
     if (!validatePreset(submission.preset)) throw new Error("The configuration is invalid.");
-    if (!this.credentials.has()) {
+    const included = new Set(submission.includedSourceIDs);
+    const selectedSources = preview.sources.filter((source) => included.has(source.sourceID));
+    if (!selectedSources.length) throw new Error("Include at least one document.");
+    if (!(await this.credentials.has())) {
       throw new Error("Add an OpenAI API key in Zotero Podcast settings first.");
     }
     await validateOutputDirectory(submission.outputDirectory);
@@ -186,13 +203,13 @@ export class WindowManager {
 
     const request: PodcastJobRequest = {
       name: submission.name.trim(),
-      attachmentKeys: preview.sources.map((source) => source.attachmentKey),
-      sourceMetadata: preview.sources.map(
+      attachmentKeys: selectedSources.map((source) => source.attachmentKey),
+      sourceMetadata: selectedSources.map(
         ({ text: _text, attachmentID: _attachmentID, ...source }) => source,
       ),
       presetSnapshot: clonePreset(submission.preset),
       outputDirectory: submission.outputDirectory,
-      sources: preview.sources,
+      sources: selectedSources,
     };
     const outputDirectory = submission.outputDirectory;
     const progressController: ProgressController = {
@@ -205,9 +222,16 @@ export class WindowManager {
     void this.jobs
       .start(request, (state) => host.update(state))
       .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
+        if (!isAbortError(error)) {
           Zotero.logError(error);
         }
       });
+  }
+
+  close(): void {
+    if (this.configurationWindow && !this.configurationWindow.closed) {
+      this.configurationWindow.close();
+    }
+    this.configurationWindow = undefined;
   }
 }

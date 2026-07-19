@@ -6,26 +6,31 @@ function loginManager(): any {
   return (Services as any).logins;
 }
 
-function findLogins(): any[] {
+async function findLogins(): Promise<any[]> {
   try {
-    return loginManager().findLogins(CREDENTIAL_ORIGIN, null, CREDENTIAL_REALM) || [];
+    return (
+      (await loginManager().searchLoginsAsync({
+        origin: CREDENTIAL_ORIGIN,
+        httpRealm: CREDENTIAL_REALM,
+      })) || []
+    );
   } catch {
     return [];
   }
 }
 
 export class CredentialService {
-  get(): string {
-    const login = findLogins().find((entry) => entry.username === USERNAME);
+  async get(): Promise<string> {
+    const login = (await findLogins()).find((entry) => entry.username === USERNAME);
     return typeof login?.password === "string" ? login.password : "";
   }
 
-  has(): boolean {
-    return this.get().length > 0;
+  async has(): Promise<boolean> {
+    return (await this.get()).length > 0;
   }
 
-  set(apiKey: string): void {
-    this.clear();
+  async set(apiKey: string): Promise<void> {
+    await this.clear();
     const trimmed = apiKey.trim();
     if (!trimmed) return;
 
@@ -43,11 +48,11 @@ export class CredentialService {
       "",
       "",
     );
-    loginManager().addLogin(login);
+    await loginManager().addLoginAsync(login);
   }
 
-  clear(): void {
-    for (const login of findLogins()) {
+  async clear(): Promise<void> {
+    for (const login of await findLogins()) {
       try {
         loginManager().removeLogin(login);
       } catch (error) {

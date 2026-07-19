@@ -107,6 +107,7 @@ async function extractAttachment(
     attachmentKey: attachment.key,
     libraryID: attachment.libraryID,
     title: displayTitle(attachment),
+    filename: String(attachment.attachmentFilename || displayTitle(attachment)),
     parentTitle: parent ? displayTitle(parent) : undefined,
     creators: creatorLine(parent),
     year,
