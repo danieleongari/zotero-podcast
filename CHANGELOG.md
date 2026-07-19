@@ -2,6 +2,13 @@
 
 All notable changes to Zotero Podcast will be documented in this file.
 
+## [0.1.2](https://github.com/danieleongari/zotero-podcast/compare/v0.1.1...v0.1.2) (2026-07-19)
+
+
+### Bug Fixes
+
+* support Zotero 9 plugin UI and workflows ([0d89e3c](https://github.com/danieleongari/zotero-podcast/commit/0d89e3cb159fb9ce0cd04b468a4d6bb2c654d4d7))
+
 ## [0.1.1](https://github.com/danieleongari/zotero-podcast/compare/v0.1.0...v0.1.1) (2026-07-18)
 
 
