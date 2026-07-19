@@ -1,1 +1,2 @@
-zotero-podcast-convert = Convert to podcast
+zotero-podcast-convert =
+    .label = Convert to podcast

@@ -1,4 +1,5 @@
 import lamejs from "@breezystack/lamejs";
+import { abortError, runtimeSetTimeout } from "../utils/runtime";
 
 export const SAMPLE_RATE = 24_000;
 const MP3_BITRATE_KBPS = 96;
@@ -25,20 +26,20 @@ export async function encodeMP3(
 
   const encode = async (samples: Int16Array) => {
     for (let offset = 0; offset < samples.length; offset += ENCODE_BLOCK_SIZE) {
-      if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+      if (signal?.aborted) throw abortError();
       const block = samples.subarray(offset, Math.min(offset + ENCODE_BLOCK_SIZE, samples.length));
       const encoded = encoder.encodeBuffer(block);
       if (encoded.length) output.push(new Uint8Array(encoded));
       processed += block.length;
       if (processed % (ENCODE_BLOCK_SIZE * 100) === 0) {
         onProgress?.(processed / totalSamples);
-        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        await new Promise<void>((resolve) => runtimeSetTimeout(resolve, 0));
       }
     }
   };
 
   for (let index = 0; index < pcmSegments.length; index += 1) {
-    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    if (signal?.aborted) throw abortError();
     await encode(pcmSegments[index]);
     if (index < pcmSegments.length - 1) await encode(pause);
   }

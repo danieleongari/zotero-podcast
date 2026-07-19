@@ -9,6 +9,7 @@ function source(text: string, id = "[D1]"): SourceDocument {
     attachmentKey: id,
     libraryID: 1,
     title: "Paper",
+    filename: "paper.pdf",
     contentType: "application/pdf",
     text,
     textCharacters: text.length,

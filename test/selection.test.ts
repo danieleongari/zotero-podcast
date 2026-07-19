@@ -9,6 +9,7 @@ interface FakeItemOptions {
   parentItemID?: number;
   attachments?: number[];
   title: string;
+  filename?: string;
   text?: string;
 }
 
@@ -18,7 +19,7 @@ function fakeItem(options: FakeItemOptions): any {
     key: options.key,
     libraryID: 1,
     parentItemID: options.parentItemID || false,
-    attachmentFilename: options.title,
+    attachmentFilename: options.filename || options.title,
     attachmentContentType: options.contentType || "",
     text: options.text || "",
     isRegularItem: () => Boolean(options.regular),
@@ -48,7 +49,8 @@ describe("Zotero selection integration", () => {
     const pdf = fakeItem({
       id: 10,
       key: "PDF",
-      title: "paper.pdf",
+      title: "PDF",
+      filename: "paper.pdf",
       contentType: "application/pdf",
       parentItemID: 1,
       text: "PDF full text",
@@ -56,7 +58,8 @@ describe("Zotero selection integration", () => {
     const epub = fakeItem({
       id: 11,
       key: "EPUB",
-      title: "book.epub",
+      title: "SI",
+      filename: "book.epub",
       contentType: "application/epub+zip",
       parentItemID: 1,
       text: "EPUB full text",
@@ -105,6 +108,8 @@ describe("Zotero selection integration", () => {
     expect(preview.sources).toHaveLength(2);
     expect(preview.sources.map((source) => source.sourceID)).toEqual(["[D1]", "[D2]"]);
     expect(preview.sources.map((source) => source.attachmentKey)).toEqual(["PDF", "EPUB"]);
+    expect(preview.sources.map((source) => source.title)).toEqual(["PDF", "SI"]);
+    expect(preview.sources.map((source) => source.filename)).toEqual(["paper.pdf", "book.epub"]);
     expect(preview.sources[0].parentTitle).toBe("Research paper");
     expect(preview.sources[0].creators).toBe("Ada Lovelace");
     expect(indexItems).toHaveBeenCalledTimes(2);

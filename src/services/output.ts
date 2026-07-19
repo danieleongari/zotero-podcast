@@ -1,4 +1,5 @@
 import { baseFilename } from "../utils/files";
+import { abortError } from "../utils/runtime";
 
 interface OutputPaths {
   directory: string;
@@ -71,24 +72,24 @@ export async function finalizeOutputs(
   transcript: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+  if (signal?.aborted) throw abortError();
   await IOUtils.write(paths.tempPodcast, mp3);
-  if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+  if (signal?.aborted) throw abortError();
   await IOUtils.writeUTF8(paths.tempSummary, summary);
-  if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+  if (signal?.aborted) throw abortError();
   await IOUtils.writeUTF8(paths.tempTranscript, transcript);
   const finalized: string[] = [];
   try {
-    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    if (signal?.aborted) throw abortError();
     await IOUtils.move(paths.tempPodcast, paths.podcast, { noOverwrite: true });
     finalized.push(paths.podcast);
-    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    if (signal?.aborted) throw abortError();
     await IOUtils.move(paths.tempSummary, paths.summary, { noOverwrite: true });
     finalized.push(paths.summary);
-    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    if (signal?.aborted) throw abortError();
     await IOUtils.move(paths.tempTranscript, paths.transcript, { noOverwrite: true });
     finalized.push(paths.transcript);
-    if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+    if (signal?.aborted) throw abortError();
     await IOUtils.remove(paths.tempDirectory, { recursive: true, ignoreAbsent: true });
   } catch (error) {
     await Promise.all(finalized.map((path) => IOUtils.remove(path, { ignoreAbsent: true })));

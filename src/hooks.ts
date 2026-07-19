@@ -12,12 +12,17 @@ async function onStartup() {
   addon.data.initialized = true;
 }
 
-async function onMainWindowLoad(_win: _ZoteroTypes.MainWindow) {}
+async function onMainWindowLoad(win: _ZoteroTypes.MainWindow) {
+  addon.menus.addToWindow(win as unknown as Window);
+}
 
-async function onMainWindowUnload(_win: _ZoteroTypes.MainWindow) {}
+async function onMainWindowUnload(win: _ZoteroTypes.MainWindow) {
+  addon.menus.removeFromWindow(win as unknown as Window);
+}
 
 async function onShutdown() {
   addon.jobs.cancel();
+  addon.windows.close();
   addon.menus.unregister();
   addon.data.alive = false;
   delete (Zotero as any)[addon.data.config.addonInstance];

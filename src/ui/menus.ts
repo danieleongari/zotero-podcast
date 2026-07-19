@@ -4,6 +4,7 @@ import { WindowManager } from "./windowManager";
 
 const ITEM_MENU_ID = "zotero-podcast-item-menu";
 const COLLECTION_MENU_ID = "zotero-podcast-collection-menu";
+const FLUENT_FILE = "zotero-podcast.ftl";
 
 export class MenuService {
   constructor(
@@ -12,6 +13,10 @@ export class MenuService {
   ) {}
 
   register(): void {
+    for (const win of Zotero.getMainWindows?.() || []) {
+      this.addToWindow(win);
+    }
+
     Zotero.MenuManager.registerMenu({
       menuID: ITEM_MENU_ID,
       pluginID: ADDON_ID,
@@ -60,5 +65,16 @@ export class MenuService {
   unregister(): void {
     Zotero.MenuManager.unregisterMenu(ITEM_MENU_ID);
     Zotero.MenuManager.unregisterMenu(COLLECTION_MENU_ID);
+    for (const win of Zotero.getMainWindows?.() || []) {
+      this.removeFromWindow(win);
+    }
+  }
+
+  addToWindow(win: Window): void {
+    (win as any).MozXULElement.insertFTLIfNeeded(FLUENT_FILE);
+  }
+
+  removeFromWindow(win: Window): void {
+    win.document.querySelector(`link[href="${FLUENT_FILE}"]`)?.remove();
   }
 }

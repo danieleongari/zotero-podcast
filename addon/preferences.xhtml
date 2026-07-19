@@ -1,4 +1,4 @@
-<vbox onload="initZoteroPodcastPreferences()" xmlns:html="http://www.w3.org/1999/xhtml">
+<vbox onload="ZoteroPodcastPreferences.init()" xmlns:html="http://www.w3.org/1999/xhtml">
   <groupbox>
     <label value="OpenAI API key" />
     <html:input
@@ -16,7 +16,9 @@
       <button id="zotero-podcast-key-clear" label="Clear" />
       <button id="zotero-podcast-key-test" label="Test connection" />
     </hbox>
-    <description id="zotero-podcast-key-status" style="min-height: 1.4em" />
+    <description id="zotero-podcast-key-status" style="min-height: 1.4em">
+      Loading secure settings…
+    </description>
 
     <separator class="thin" />
     <label value="Output directory" />

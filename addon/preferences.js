@@ -1,5 +1,3 @@
-let zoteroPodcastPreferencesInitialized = false;
-
 function podcastAddon() {
   return Zotero.PodcastAddon;
 }
@@ -12,8 +10,8 @@ function setPodcastStatus(id, message, isError = false) {
 }
 
 async function initZoteroPodcastPreferences() {
-  if (zoteroPodcastPreferencesInitialized) return;
-  zoteroPodcastPreferencesInitialized = true;
+  if (window.ZoteroPodcastPreferences.initialized) return;
+  window.ZoteroPodcastPreferences.initialized = true;
 
   const apiInput = document.getElementById("zotero-podcast-api-key");
   const clearButton = document.getElementById("zotero-podcast-key-clear");
@@ -32,18 +30,49 @@ async function initZoteroPodcastPreferences() {
     return;
   }
 
-  apiInput.value = podcastAddon().getAPIKey();
-  outputInput.value = podcastAddon().settings.outputDirectory;
+  try {
+    apiInput.value = await podcastAddon().getAPIKey();
+    outputInput.value = podcastAddon().settings.outputDirectory;
+    setPodcastStatus(
+      "zotero-podcast-key-status",
+      apiInput.value ? "API key is stored securely." : "No API key stored.",
+    );
+  } catch (error) {
+    setPodcastStatus(
+      "zotero-podcast-key-status",
+      `Could not load settings: ${error instanceof Error ? error.message : String(error)}`,
+      true,
+    );
+  }
 
-  apiInput.addEventListener("change", () => {
-    podcastAddon().setAPIKey(String(apiInput.value || ""));
-    setPodcastStatus("zotero-podcast-key-status", "API key saved securely.");
+  apiInput.addEventListener("change", async () => {
+    try {
+      await podcastAddon().setAPIKey(String(apiInput.value || ""));
+      setPodcastStatus("zotero-podcast-key-status", "API key saved securely.");
+    } catch (error) {
+      setPodcastStatus(
+        "zotero-podcast-key-status",
+        `Could not save API key: ${error instanceof Error ? error.message : String(error)}`,
+        true,
+      );
+    }
   });
 
-  clearButton.addEventListener("command", () => {
-    podcastAddon().clearAPIKey();
-    apiInput.value = "";
-    setPodcastStatus("zotero-podcast-key-status", "API key cleared.");
+  clearButton.addEventListener("command", async () => {
+    clearButton.disabled = true;
+    try {
+      await podcastAddon().clearAPIKey();
+      apiInput.value = "";
+      setPodcastStatus("zotero-podcast-key-status", "API key cleared.");
+    } catch (error) {
+      setPodcastStatus(
+        "zotero-podcast-key-status",
+        `Could not clear API key: ${error instanceof Error ? error.message : String(error)}`,
+        true,
+      );
+    } finally {
+      clearButton.disabled = false;
+    }
   });
 
   testButton.addEventListener("command", async () => {
@@ -52,10 +81,10 @@ async function initZoteroPodcastPreferences() {
       setPodcastStatus("zotero-podcast-key-status", "Enter an API key first.", true);
       return;
     }
-    podcastAddon().setAPIKey(value);
     testButton.disabled = true;
     setPodcastStatus("zotero-podcast-key-status", "Testing OpenAI connection…");
     try {
+      await podcastAddon().setAPIKey(value);
       await podcastAddon().testAPIKey(value);
       setPodcastStatus("zotero-podcast-key-status", "OpenAI connection successful.");
     } catch (error) {
@@ -100,10 +129,7 @@ async function initZoteroPodcastPreferences() {
   });
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initZoteroPodcastPreferences, { once: true });
-} else {
-  void initZoteroPodcastPreferences();
-}
-
-window.initZoteroPodcastPreferences = initZoteroPodcastPreferences;
+window.ZoteroPodcastPreferences = {
+  initialized: false,
+  init: initZoteroPodcastPreferences,
+};

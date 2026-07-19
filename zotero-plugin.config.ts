@@ -13,6 +13,9 @@ export default defineConfig({
     "https://github.com/danieleongari/zotero-podcast/releases/download/v{{version}}/{{xpiName}}.xpi",
   build: {
     assets: ["addon/**/*.*"],
+    fluent: {
+      prefixLocaleFiles: false,
+    },
     define: {
       ...pkg.config,
       author: pkg.author,

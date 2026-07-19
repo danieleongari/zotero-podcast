@@ -20,6 +20,15 @@ const controller = (window.arguments?.[0] as any)?.wrappedJSObject as
 let presets: PodcastPresetV1[] = [];
 let loadedPreset: PodcastPresetV1;
 let speakerDrafts: Speaker[] = [];
+let hasAPIKey = false;
+
+interface CustomSelectState {
+  wrapper: HTMLDivElement;
+  button: HTMLButtonElement;
+  menu: HTMLDivElement;
+}
+
+const customSelects = new Map<HTMLSelectElement, CustomSelectState>();
 
 function option(value: string, label = value): HTMLOptionElement {
   const result = document.createElement("option");
@@ -28,8 +37,157 @@ function option(value: string, label = value): HTMLOptionElement {
   return result;
 }
 
+function closeCustomSelect(select: HTMLSelectElement): void {
+  const state = customSelects.get(select);
+  if (!state) return;
+  state.menu.hidden = true;
+  state.button.setAttribute("aria-expanded", "false");
+}
+
+function closeOtherCustomSelects(current?: HTMLSelectElement): void {
+  for (const select of customSelects.keys()) {
+    if (select !== current) closeCustomSelect(select);
+  }
+}
+
+function customOptionButtons(state: CustomSelectState): HTMLButtonElement[] {
+  return [...state.menu.querySelectorAll<HTMLButtonElement>(".custom-select-option")];
+}
+
+function syncCustomSelect(select: HTMLSelectElement): void {
+  const state = customSelects.get(select);
+  if (!state) return;
+  const selected = select.selectedOptions[0];
+  state.button.textContent = selected?.textContent || "Choose…";
+  state.button.disabled = select.disabled;
+  for (const button of customOptionButtons(state)) {
+    const isSelected = button.dataset.value === select.value;
+    button.classList.toggle("selected", isSelected);
+    button.setAttribute("aria-selected", String(isSelected));
+  }
+}
+
+function selectCustomOption(select: HTMLSelectElement, value: string): void {
+  select.value = value;
+  syncCustomSelect(select);
+  closeCustomSelect(select);
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+  customSelects.get(select)?.button.focus();
+}
+
+function rebuildCustomSelectMenu(select: HTMLSelectElement): void {
+  const state = customSelects.get(select);
+  if (!state) return;
+  state.menu.replaceChildren();
+
+  const addOption = (entry: HTMLOptionElement): void => {
+    const button = document.createElement("button");
+    button.className = "custom-select-option";
+    button.type = "button";
+    button.role = "option";
+    button.dataset.value = entry.value;
+    button.textContent = entry.textContent;
+    button.disabled = entry.disabled;
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectCustomOption(select, entry.value);
+    });
+    state.menu.append(button);
+  };
+
+  for (const child of select.children) {
+    if (child instanceof HTMLOptionElement) {
+      addOption(child);
+      continue;
+    }
+    if (child instanceof HTMLOptGroupElement) {
+      const group = document.createElement("div");
+      group.className = "custom-select-group";
+      group.textContent = child.label;
+      state.menu.append(group);
+      for (const entry of child.querySelectorAll("option")) addOption(entry);
+    }
+  }
+  syncCustomSelect(select);
+}
+
+function moveCustomOptionFocus(state: CustomSelectState, direction: number): void {
+  const options = customOptionButtons(state).filter((entry) => !entry.disabled);
+  if (!options.length) return;
+  const active = options.indexOf(document.activeElement as HTMLButtonElement);
+  const selected = options.findIndex((entry) => entry.classList.contains("selected"));
+  const start = active >= 0 ? active : selected >= 0 ? selected : 0;
+  options[(start + direction + options.length) % options.length].focus();
+}
+
+function openCustomSelect(select: HTMLSelectElement): void {
+  const state = customSelects.get(select);
+  if (!state || select.disabled) return;
+  closeOtherCustomSelects(select);
+  state.menu.hidden = false;
+  state.button.setAttribute("aria-expanded", "true");
+  const selected = state.menu.querySelector<HTMLButtonElement>(".custom-select-option.selected");
+  (selected || customOptionButtons(state)[0])?.focus();
+}
+
+function enhanceSelect(select: HTMLSelectElement): void {
+  if (customSelects.has(select)) {
+    rebuildCustomSelectMenu(select);
+    return;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "custom-select";
+  const button = document.createElement("button");
+  button.className = "custom-select-toggle";
+  button.type = "button";
+  button.setAttribute("aria-haspopup", "listbox");
+  button.setAttribute("aria-expanded", "false");
+  const menu = document.createElement("div");
+  menu.className = "custom-select-menu";
+  menu.id = `${select.id || `custom-select-${customSelects.size + 1}`}-menu`;
+  menu.role = "listbox";
+  menu.hidden = true;
+  button.setAttribute("aria-controls", menu.id);
+  wrapper.append(button, menu);
+  select.hidden = true;
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+  select.after(wrapper);
+  customSelects.set(select, { wrapper, button, menu });
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (menu.hidden) openCustomSelect(select);
+    else closeCustomSelect(select);
+  });
+  button.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      openCustomSelect(select);
+      if (event.key === "ArrowUp") {
+        moveCustomOptionFocus(customSelects.get(select)!, -1);
+      }
+    }
+  });
+  menu.addEventListener("keydown", (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeCustomSelect(select);
+      button.focus();
+    } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveCustomOptionFocus(customSelects.get(select)!, event.key === "ArrowDown" ? 1 : -1);
+    }
+  });
+  rebuildCustomSelectMenu(select);
+}
+
 function fillSelect(select: HTMLSelectElement, values: readonly string[]): void {
   select.replaceChildren(...values.map((value) => option(value)));
+  if (select.isConnected) enhanceSelect(select);
 }
 
 function populatePresetSelect(selectedID: string): void {
@@ -47,6 +205,7 @@ function populatePresetSelect(selectedID: string): void {
   select.value = presets.some((preset) => preset.id === selectedID)
     ? selectedID
     : "scholarly-deep-dive";
+  enhanceSelect(select);
 }
 
 function snapshotSpeakers(): void {
@@ -85,6 +244,7 @@ function renderSpeakers(count: number): void {
     for (const input of [name, voice]) input.addEventListener("change", updateCost);
     row.append(label, name, voice);
     list.append(row);
+    enhanceSelect(voice);
   }
   snapshotSpeakers();
 }
@@ -102,6 +262,10 @@ function loadPreset(preset: PodcastPresetV1): void {
   element<HTMLSelectElement>("speaker-count").value = String(preset.speakers.length);
   renderSpeakers(preset.speakers.length);
   element<HTMLButtonElement>("preset-delete").disabled = Boolean(preset.builtIn);
+  for (const select of document.querySelectorAll<HTMLSelectElement>("select")) {
+    enhanceSelect(select);
+    syncCustomSelect(select);
+  }
   updateCost();
 }
 
@@ -134,11 +298,31 @@ function money(value: number): string {
   return `$${value.toFixed(value < 0.01 ? 4 : 2)}`;
 }
 
+function includedSourceIDs(): string[] {
+  return [...document.querySelectorAll<HTMLInputElement>(".source-checkbox:checked")].map(
+    (checkbox) => checkbox.value,
+  );
+}
+
+function updateSourceSelection(): void {
+  if (!controller) return;
+  const included = new Set(includedSourceIDs());
+  const selectedSources = controller.preview.sources.filter((source) =>
+    included.has(source.sourceID),
+  );
+  const total = controller.preview.sources.length;
+  element<HTMLDivElement>("source-summary").textContent =
+    `${selectedSources.length} of ${total} document attachment${total === 1 ? "" : "s"} included; ` +
+    `${selectedSources.reduce((sum, source) => sum + source.textCharacters, 0).toLocaleString()} extracted characters.`;
+  element<HTMLButtonElement>("submit").disabled = !hasAPIKey || !selectedSources.length;
+  updateCost();
+}
+
 function updateCost(): void {
   if (!controller) return;
   const preset = readPreset();
   if (!validatePreset(preset)) return;
-  const cost = controller.estimate(preset);
+  const cost = controller.estimate(preset, includedSourceIDs());
   const values = [
     ["Summary LLM", money(cost.summary)],
     ["Podcast LLM", money(cost.podcast)],
@@ -190,20 +374,60 @@ async function initialize(): Promise<void> {
     presets[0];
   loadPreset(initial);
   element<HTMLInputElement>("output-directory").value = controller.outputDirectory;
-  element<HTMLDivElement>("api-warning").hidden = controller.hasAPIKey;
-  element<HTMLButtonElement>("submit").disabled = !controller.hasAPIKey;
+  hasAPIKey = controller.hasAPIKey;
+  element<HTMLDivElement>("api-warning").hidden = hasAPIKey;
 
-  const sourceList = element<HTMLOListElement>("source-list");
+  const sourceList = element<HTMLUListElement>("source-list");
   sourceList.replaceChildren(
     ...controller.preview.sources.map((source) => {
       const item = document.createElement("li");
-      item.textContent = `${source.sourceID} ${source.parentTitle || source.title} — ${source.contentType}, ${source.textCharacters.toLocaleString()} characters`;
+      const row = document.createElement("div");
+      row.className = "source-row";
+      const label = document.createElement("label");
+      label.className = "source-option";
+      const checkbox = document.createElement("input");
+      checkbox.className = "source-checkbox";
+      checkbox.type = "checkbox";
+      checkbox.value = source.sourceID;
+      checkbox.checked = true;
+      checkbox.setAttribute("aria-label", `Include ${source.filename}`);
+      checkbox.addEventListener("change", updateSourceSelection);
+      const description = document.createElement("span");
+      const filename = document.createElement("span");
+      filename.className = "source-filename";
+      filename.textContent = source.filename;
+      description.append(
+        `${source.sourceID} ${source.parentTitle || "Standalone attachment"} — Attachment: ${source.title} — File: `,
+        filename,
+        ` — ${source.contentType}, ${source.textCharacters.toLocaleString()} characters`,
+      );
+      label.append(checkbox, description);
+      const open = document.createElement("button");
+      open.className = "source-open";
+      open.type = "button";
+      open.textContent = "Open";
+      open.setAttribute("aria-label", `Open ${source.title}`);
+      open.addEventListener("click", async () => {
+        open.disabled = true;
+        try {
+          await controller.openSource(source.attachmentID);
+          showError();
+        } catch (error) {
+          showError(
+            `Could not open ${source.title}: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        } finally {
+          open.disabled = false;
+        }
+      });
+      row.append(label, open);
+      item.append(row);
       return item;
     }),
   );
-  element<HTMLDivElement>("source-summary").textContent =
-    `${controller.preview.sources.length} document attachment${controller.preview.sources.length === 1 ? "" : "s"} ready; ` +
-    `${controller.preview.sources.reduce((sum, source) => sum + source.textCharacters, 0).toLocaleString()} extracted characters.`;
+  updateSourceSelection();
   const skippedList = element<HTMLUListElement>("skipped-list");
   skippedList.replaceChildren(
     ...controller.preview.skipped.map((reason) => {
@@ -288,6 +512,7 @@ async function initialize(): Promise<void> {
         name: element<HTMLInputElement>("podcast-name").value,
         preset,
         outputDirectory: element<HTMLInputElement>("output-directory").value,
+        includedSourceIDs: includedSourceIDs(),
       });
       window.close();
     } catch (error) {
@@ -297,6 +522,17 @@ async function initialize(): Promise<void> {
   });
   updateCost();
 }
+
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    const target = event.target as Node | null;
+    for (const [select, state] of customSelects) {
+      if (target && !state.wrapper.contains(target)) closeCustomSelect(select);
+    }
+  },
+  true,
+);
 
 window.ZoteroPodcastConfiguration = { initialize };
 if (document.readyState === "loading") {

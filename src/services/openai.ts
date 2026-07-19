@@ -14,6 +14,13 @@ import type {
   Usage,
 } from "../types";
 import { chunkSources, wordCount } from "../utils/text";
+import {
+  abortError,
+  isAbortError,
+  runtimeClearTimeout,
+  runtimeFetch,
+  runtimeSetTimeout,
+} from "../utils/runtime";
 
 interface StructuredResponse<T> {
   value: T;
@@ -360,9 +367,9 @@ ${JSON.stringify(script)}`,
   private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
     let lastError: unknown;
     for (let attempt = 0; attempt < 4; attempt += 1) {
-      if (this.signal.aborted) throw new DOMException("Cancelled", "AbortError");
+      if (this.signal.aborted) throw abortError();
       try {
-        const response = await fetch(url, init);
+        const response = await runtimeFetch(url, init);
         if (response.ok) return response;
         if (response.status !== 429 && response.status < 500) {
           const hint =
@@ -380,7 +387,7 @@ ${JSON.stringify(script)}`,
         const retryAfter = Number(response.headers.get("retry-after") || 0) * 1_000;
         await this.delay(retryAfter || 500 * 2 ** attempt + Math.random() * 250);
       } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") throw error;
+        if (isAbortError(error)) throw error;
         if (error instanceof NonRetryableOpenAIError) throw error;
         lastError = error;
         if (attempt === 3) break;
@@ -392,12 +399,12 @@ ${JSON.stringify(script)}`,
 
   private delay(milliseconds: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(resolve, milliseconds);
+      const timer = runtimeSetTimeout(resolve, milliseconds);
       this.signal.addEventListener(
         "abort",
         () => {
-          clearTimeout(timer);
-          reject(new DOMException("Cancelled", "AbortError"));
+          runtimeClearTimeout(timer);
+          reject(abortError());
         },
         { once: true },
       );
