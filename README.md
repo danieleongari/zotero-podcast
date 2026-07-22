@@ -16,8 +16,9 @@ English, multi-voice podcast using OpenAI. It is inspired by
   voices.
 - Review an itemized cost estimate before submitting.
 - Continue using Zotero while a single background job reports progress and supports cancellation.
-- Receive an MP3, a source-aware summary, and a cited dialogue transcript without modifying Zotero
-  items.
+- Read at most 10 documents per podcast with document-by-document extraction progress.
+- Receive an MP3 and a companion folder containing the exact LLM inputs and outputs without
+  modifying Zotero items.
 
 ## Install
 
@@ -27,20 +28,30 @@ English, multi-voice podcast using OpenAI. It is inspired by
 4. Select items or a collection, right-click, and choose **Convert to podcast**.
 
 Selected document text is sent to OpenAI only after Submit. The API key is stored with Mozilla's
-credential manager. Document contents and credentials are not logged.
+credential manager. The API key is never logged. For process transparency, document contents are
+saved locally in the generated `summarization_in.txt` file.
 
 ## Outputs
 
 Each successful job writes exactly:
 
 ```text
-YYYY-MM-DD_HHmmss_NAME_podcast.mp3
-YYYY-MM-DD_HHmmss_NAME_summary.txt
-YYYY-MM-DD_HHmmss_NAME_transcript.txt
+YYYY-MM-DD_HHmmss_NAME_podcast/
+  NAME.mp3
+  summarization_in.txt
+  summarization_out.txt
+  transcription_in.txt
+  transcription_out.txt
+  costs.txt
 ```
 
-Temporary job data is removed on success, cancellation, and handled failures. The MP3 and transcript
-begin with an AI-generated-audio disclosure.
+The podcast folder is the only top-level artifact, and its sole MP3 is named after the project. The
+process files use prominent separators and preserve every model call, including chunked
+summarization, reduction, or transcript repair calls. They present prompts, settings, and model
+values in a human-readable format rather than JSON notation. `costs.txt` compares predicted and
+calculated actual costs for summarization, script generation, speech synthesis, and local output.
+Temporary job data is removed on success, cancellation, and handled failures. The MP3 begins with an
+actual podcast turn, without a prefixed AI disclosure.
 
 ## Development
 

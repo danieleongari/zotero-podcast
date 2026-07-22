@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BUILT_IN_PRESETS } from "../src/presets";
-import { estimateCost, estimateTokens, PRICING_DATE } from "../src/pricing";
+import { actualCostBreakdown, estimateCost, estimateTokens, PRICING_DATE } from "../src/pricing";
 
 describe("cost estimation", () => {
   it("uses the documented character token heuristic", () => {
@@ -29,5 +29,22 @@ describe("cost estimation", () => {
     const mapped = estimateCost([{ textCharacters: 1_600_000 }], preset);
     expect(mapped.sourceTokens).toBe(400_000);
     expect(mapped.summary).toBeGreaterThan(direct.summary * 4);
+  });
+
+  it("returns calculated actual costs for each billable stage", () => {
+    const preset = BUILT_IN_PRESETS[0];
+    const result = actualCostBreakdown(
+      { inputTokens: 1_000, outputTokens: 100 },
+      { inputTokens: 500, outputTokens: 200 },
+      2_000,
+      preset.summaryModel,
+      preset.podcastModel,
+      preset.ttsModel,
+    );
+
+    expect(result.summary).toBeGreaterThan(0);
+    expect(result.podcast).toBeGreaterThan(0);
+    expect(result.tts).toBeGreaterThan(0);
+    expect(result.total).toBeCloseTo(result.summary + result.podcast + result.tts);
   });
 });

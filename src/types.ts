@@ -90,14 +90,30 @@ export interface CostBreakdown {
   expectedTTSCharacters: number;
 }
 
+export interface ActualCostBreakdown {
+  summary: number;
+  podcast: number;
+  tts: number;
+  total: number;
+}
+
 export interface PodcastJobResult {
   podcastPath: string;
-  summaryPath: string;
-  transcriptPath: string;
+  podcastDirectoryPath: string;
   durationSeconds: number;
   usage: Usage;
   estimatedCost: number;
   warnings: string[];
+}
+
+export interface LLMCallTrace {
+  model: LLMModel;
+  requestName: string;
+  instructions: string;
+  input: string;
+  maxOutputTokens: number;
+  responseFormat: object;
+  output: string;
 }
 
 export interface SourceCoverage {

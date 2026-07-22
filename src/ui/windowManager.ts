@@ -1,3 +1,4 @@
+import { MAX_PODCAST_DOCUMENTS } from "../constants";
 import { estimateCost } from "../pricing";
 import { clonePreset, validatePreset } from "../presets";
 import type {
@@ -10,7 +11,11 @@ import type {
 } from "../types";
 import { CredentialService } from "../services/credentials";
 import { JobManager } from "../services/jobManager";
-import { SelectionService } from "../services/selection";
+import {
+  SelectionService,
+  TooManyDocumentsError,
+  type SelectionProgressCallback,
+} from "../services/selection";
 import { SettingsService } from "../services/settings";
 import { validateOutputDirectory } from "../services/output";
 import { isAbortError } from "../utils/runtime";
@@ -71,12 +76,12 @@ export class WindowManager {
 
   async openForItems(items: Zotero.Item[]): Promise<void> {
     if (!this.ensureIdle()) return;
-    await this.prepare(() => this.selection.fromItems(items));
+    await this.prepare((onProgress) => this.selection.fromItems(items, onProgress));
   }
 
   async openForCollection(collection: Zotero.Collection): Promise<void> {
     if (!this.ensureIdle()) return;
-    await this.prepare(() => this.selection.fromCollection(collection));
+    await this.prepare((onProgress) => this.selection.fromCollection(collection, onProgress));
   }
 
   async browseOutputDirectory(): Promise<string | null> {
@@ -110,16 +115,22 @@ export class WindowManager {
     return true;
   }
 
-  private async prepare(loader: () => Promise<SelectionPreview>): Promise<void> {
+  private async prepare(
+    loader: (onProgress: SelectionProgressCallback) => Promise<SelectionPreview>,
+  ): Promise<void> {
     const progress = new (Zotero as any).ProgressWindow({ closeOnClick: false });
     progress.changeHeadline("Zotero Podcast");
     const line = new progress.ItemProgress(
       `${this.rootURI}content/icons/podcast.svg`,
       "Reading selected full text…",
     );
+    line.setProgress(0);
     progress.show();
     try {
-      const preview = await loader();
+      const preview = await loader((current, total, title) => {
+        line.setText(`Reading document ${current} of ${total}: ${title}`);
+        line.setProgress(Math.round(((current - 1) / total) * 100));
+      });
       line.setProgress(100);
       progress.startCloseTimer(800);
       if (!preview.sources.length) {
@@ -133,6 +144,10 @@ export class WindowManager {
       await this.openConfiguration(preview);
     } catch (error) {
       progress.close();
+      if (error instanceof TooManyDocumentsError) {
+        alert("Zotero Podcast", error.message);
+        return;
+      }
       const message = error instanceof Error ? error.message : String(error);
       alert("Zotero Podcast", `Could not prepare the selection.\n\n${message}`);
     }
@@ -194,6 +209,9 @@ export class WindowManager {
     const included = new Set(submission.includedSourceIDs);
     const selectedSources = preview.sources.filter((source) => included.has(source.sourceID));
     if (!selectedSources.length) throw new Error("Include at least one document.");
+    if (selectedSources.length > MAX_PODCAST_DOCUMENTS) {
+      throw new Error(`Include ${MAX_PODCAST_DOCUMENTS} or fewer documents.`);
+    }
     if (!(await this.credentials.has())) {
       throw new Error("Add an OpenAI API key in Zotero Podcast settings first.");
     }
