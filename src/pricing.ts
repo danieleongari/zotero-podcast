@@ -1,10 +1,6 @@
-import {
-  DISCLOSURE,
-  MAX_SOURCE_TOKENS_PER_REQUEST,
-  PRICING_DATE,
-  WORDS_PER_MINUTE,
-} from "./constants";
+import { MAX_SOURCE_TOKENS_PER_REQUEST, PRICING_DATE, WORDS_PER_MINUTE } from "./constants";
 import type {
+  ActualCostBreakdown,
   CostBreakdown,
   LLMModel,
   PodcastPresetV1,
@@ -30,9 +26,13 @@ export function estimateTokens(characters: number): number {
   return Math.ceil(Math.max(0, characters) / 4);
 }
 
-function llmCost(model: LLMModel, inputTokens: number, outputTokens: number): number {
+export function llmCost(model: LLMModel, inputTokens: number, outputTokens: number): number {
   const price = LLM_PRICES[model];
   return (inputTokens * price.input + outputTokens * price.output) / 1_000_000;
+}
+
+export function ttsCost(model: TTSModel, characters: number): number {
+  return (characters * TTS_PRICES[model]) / 1_000_000;
 }
 
 export function estimateCost(
@@ -52,11 +52,11 @@ export function estimateCost(
     chunkCount > 1 ? chunkCount * mapOutputTokens + expectedSummaryTokens : expectedSummaryTokens;
   const dialogueWords = preset.targetMinutes * WORDS_PER_MINUTE;
   const expectedPodcastTokens = Math.ceil(dialogueWords * 1.35);
-  const expectedTTSCharacters = Math.ceil(dialogueWords * 6 + DISCLOSURE.length);
+  const expectedTTSCharacters = Math.ceil(dialogueWords * 6);
 
   const summary = llmCost(preset.summaryModel, summaryInputTokens, summaryOutputTokens);
   const podcast = llmCost(preset.podcastModel, expectedSummaryTokens, expectedPodcastTokens);
-  const tts = (expectedTTSCharacters * TTS_PRICES[preset.ttsModel]) / 1_000_000;
+  const tts = ttsCost(preset.ttsModel, expectedTTSCharacters);
   const expected = summary + podcast + tts;
   const repair = llmCost(preset.podcastModel, expectedPodcastTokens, expectedPodcastTokens);
 
@@ -83,7 +83,7 @@ export function actualCost(
   if (!summaryUsage) {
     return (
       llmCost(podcastModel, usage.inputTokens, usage.outputTokens) +
-      (usage.ttsCharacters * TTS_PRICES[ttsModel]) / 1_000_000
+      ttsCost(ttsModel, usage.ttsCharacters)
     );
   }
   const podcastInput = Math.max(0, usage.inputTokens - summaryUsage.inputTokens);
@@ -91,6 +91,20 @@ export function actualCost(
   return (
     llmCost(summaryModel, summaryUsage.inputTokens, summaryUsage.outputTokens) +
     llmCost(podcastModel, podcastInput, podcastOutput) +
-    (usage.ttsCharacters * TTS_PRICES[ttsModel]) / 1_000_000
+    ttsCost(ttsModel, usage.ttsCharacters)
   );
+}
+
+export function actualCostBreakdown(
+  summaryUsage: Pick<Usage, "inputTokens" | "outputTokens">,
+  podcastUsage: Pick<Usage, "inputTokens" | "outputTokens">,
+  ttsCharacters: number,
+  summaryModel: LLMModel,
+  podcastModel: LLMModel,
+  ttsModel: TTSModel,
+): ActualCostBreakdown {
+  const summary = llmCost(summaryModel, summaryUsage.inputTokens, summaryUsage.outputTokens);
+  const podcast = llmCost(podcastModel, podcastUsage.inputTokens, podcastUsage.outputTokens);
+  const tts = ttsCost(ttsModel, ttsCharacters);
+  return { summary, podcast, tts, total: summary + podcast + tts };
 }

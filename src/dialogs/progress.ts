@@ -51,8 +51,7 @@ function update(state: ProgressState): void {
       `Duration ${formatDuration(state.result.durationSeconds)} · Estimated actual OpenAI cost $${state.result.estimatedCost.toFixed(4)}`;
     element<HTMLParagraphElement>("result-paths").textContent = [
       state.result.podcastPath,
-      state.result.summaryPath,
-      state.result.transcriptPath,
+      state.result.podcastDirectoryPath,
     ].join("\n");
     const warningList = element<HTMLUListElement>("warning-list");
     warningList.replaceChildren(

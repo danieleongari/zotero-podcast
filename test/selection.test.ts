@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SelectionService } from "../src/services/selection";
+import { SelectionService, TooManyDocumentsError } from "../src/services/selection";
 
 interface FakeItemOptions {
   id: number;
@@ -86,6 +86,7 @@ describe("Zotero selection integration", () => {
       getChildCollections: () => [childCollection],
     };
     const indexItems = vi.fn(async () => undefined);
+    const onProgress = vi.fn();
 
     (globalThis as any).Zotero = {
       FullText: {
@@ -103,7 +104,7 @@ describe("Zotero selection integration", () => {
       },
     };
 
-    const preview = await new SelectionService().fromCollection(rootCollection as any);
+    const preview = await new SelectionService().fromCollection(rootCollection as any, onProgress);
 
     expect(preview.sources).toHaveLength(2);
     expect(preview.sources.map((source) => source.sourceID)).toEqual(["[D1]", "[D2]"]);
@@ -113,6 +114,36 @@ describe("Zotero selection integration", () => {
     expect(preview.sources[0].parentTitle).toBe("Research paper");
     expect(preview.sources[0].creators).toBe("Ada Lovelace");
     expect(indexItems).toHaveBeenCalledTimes(2);
+    expect(onProgress.mock.calls).toEqual([
+      [1, 2, "PDF"],
+      [2, 2, "SI"],
+    ]);
     expect(preview.skipped).toContain("figure.png — unsupported attachment type image/png");
+  });
+
+  it("rejects more than ten supported documents before reading full text", async () => {
+    const attachments = Array.from({ length: 11 }, (_, index) =>
+      fakeItem({
+        id: index + 1,
+        key: `PDF${index + 1}`,
+        title: `Document ${index + 1}`,
+        filename: `document-${index + 1}.pdf`,
+        contentType: "application/pdf",
+        text: "Full text",
+      }),
+    );
+    const indexItems = vi.fn(async () => undefined);
+    (globalThis as any).Zotero = {
+      FullText: {
+        isCachedMIMEType: () => true,
+        indexItems,
+      },
+    };
+
+    const pending = new SelectionService().fromItems(attachments);
+
+    await expect(pending).rejects.toBeInstanceOf(TooManyDocumentsError);
+    await expect(pending).rejects.toMatchObject({ count: 11, maximum: 10 });
+    expect(indexItems).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { DISCLOSURE } from "../src/constants";
 import { BUILT_IN_PRESETS } from "../src/presets";
-import { renderSummary, renderTranscript, scriptTurnsWithDisclosure } from "../src/services/openai";
+import { renderSummary, renderTranscript } from "../src/services/openai";
 import type { PodcastScript, SourceDocument, SummaryResult } from "../src/types";
 
 const script: PodcastScript = {
@@ -33,11 +32,10 @@ const source: SourceDocument = {
 };
 
 describe("human-readable outputs", () => {
-  it("starts the transcript and speech plan with the required disclosure", () => {
+  it("starts the transcript directly with the generated podcast", () => {
     const transcript = renderTranscript(script, BUILT_IN_PRESETS[1]);
-    expect(transcript.startsWith(DISCLOSURE)).toBe(true);
+    expect(transcript.startsWith("# Evidence")).toBe(true);
     expect(transcript).toContain("Expert: The measured effect was significant. [D1]");
-    expect(scriptTurnsWithDisclosure(script)[0].text).toBe(DISCLOSURE);
   });
 
   it("renders source coverage and warnings into summary text", () => {

@@ -1,15 +1,18 @@
-import { DISCLOSURE, DURATION_TOLERANCE, WORDS_PER_MINUTE } from "../constants";
-import { actualCost, estimateCost } from "../pricing";
+import { DURATION_TOLERANCE, WORDS_PER_MINUTE } from "../constants";
+import { actualCostBreakdown, estimateCost } from "../pricing";
 import type { PodcastJobRequest, PodcastJobResult, ProgressState, Usage } from "../types";
 import { splitForSpeech, stripSourceMarkers, wordCount } from "../utils/text";
 import { abortError, createAbortController } from "../utils/runtime";
 import { encodeMP3 } from "./audio";
 import { CredentialService } from "./credentials";
-import { OpenAIClient, renderSummary, renderTranscript, scriptTurnsWithDisclosure } from "./openai";
+import { OpenAIClient } from "./openai";
 import {
   allocateOutputPaths,
   cleanupOutputs,
   finalizeOutputs,
+  renderCosts,
+  renderLLMInputs,
+  renderLLMOutputs,
   type OutputPaths,
   validateOutputDirectory,
 } from "./output";
@@ -109,15 +112,13 @@ export class JobManager {
       const speakerByID = new Map(
         preset.speakers.map((speaker, index) => [`speaker-${index + 1}`, speaker]),
       );
-      const spokenWords = wordCount(
-        `${DISCLOSURE} ${scripted.script.turns.map((turn) => turn.text).join(" ")}`,
-      );
+      const spokenWords = wordCount(scripted.script.turns.map((turn) => turn.text).join(" "));
       const speed = Math.max(
         0.25,
         Math.min(4, spokenWords / (preset.targetMinutes * WORDS_PER_MINUTE)),
       );
       const speechTasks: SpeechTask[] = [];
-      for (const turn of scriptTurnsWithDisclosure(scripted.script)) {
+      for (const turn of scripted.script.turns) {
         const speaker = speakerByID.get(turn.speakerId) || preset.speakers[0];
         for (const chunk of splitForSpeech(stripSourceMarkers(turn.text))) {
           speechTasks.push({ input: chunk, voice: speaker.voice });
@@ -163,6 +164,14 @@ export class JobManager {
         outputTokens: summarized.usage.outputTokens + scripted.usage.outputTokens,
         ttsCharacters: speechTasks.reduce((sum, task) => sum + task.input.length, 0),
       };
+      const costs = actualCostBreakdown(
+        summarized.usage,
+        scripted.usage,
+        usage.ttsCharacters,
+        preset.summaryModel,
+        preset.podcastModel,
+        preset.ttsModel,
+      );
       const warnings = [...summarized.summary.warnings];
       const targetSeconds = preset.targetMinutes * 60;
       if (
@@ -186,25 +195,30 @@ export class JobManager {
       await finalizeOutputs(
         paths,
         encoded.bytes,
-        renderSummary(summarized.summary, request.sources),
-        renderTranscript(scripted.script, preset),
+        {
+          summarizationInput: renderLLMInputs("summarization", summarized.traces),
+          summarizationOutput: renderLLMOutputs("summarization", summarized.traces),
+          transcriptionInput: renderLLMInputs("transcription", scripted.traces),
+          transcriptionOutput: renderLLMOutputs("transcription", scripted.traces),
+          costs: renderCosts(
+            initialEstimate,
+            costs,
+            summarized.usage,
+            scripted.usage,
+            usage.ttsCharacters,
+            preset,
+          ),
+        },
         signal,
       );
       if (signal.aborted) throw abortError();
 
       const result: PodcastJobResult = {
         podcastPath: paths.podcast,
-        summaryPath: paths.summary,
-        transcriptPath: paths.transcript,
+        podcastDirectoryPath: paths.podcastDirectory,
         durationSeconds: encoded.durationSeconds,
         usage,
-        estimatedCost: actualCost(
-          usage,
-          preset.summaryModel,
-          preset.podcastModel,
-          preset.ttsModel,
-          summarized.usage,
-        ),
+        estimatedCost: costs.total,
         warnings,
       };
       onProgress({

@@ -1,4 +1,19 @@
+import { MAX_PODCAST_DOCUMENTS } from "../constants";
 import type { SelectionPreview, SourceDocument } from "../types";
+
+export type SelectionProgressCallback = (current: number, total: number, title: string) => void;
+
+export class TooManyDocumentsError extends Error {
+  constructor(
+    public readonly count: number,
+    public readonly maximum = MAX_PODCAST_DOCUMENTS,
+  ) {
+    super(
+      `You selected ${count.toLocaleString("en-US")} documents. Select ${maximum} or fewer documents and try again.`,
+    );
+    this.name = "TooManyDocumentsError";
+  }
+}
 
 const SUPPORTED_MIME_TYPES = new Set([
   "application/pdf",
@@ -118,20 +133,35 @@ async function extractAttachment(
 }
 
 export class SelectionService {
-  async fromItems(items: Zotero.Item[]): Promise<SelectionPreview> {
+  async fromItems(
+    items: Zotero.Item[],
+    onProgress?: SelectionProgressCallback,
+  ): Promise<SelectionPreview> {
     const resolved = await attachmentItemsForItems(items);
-    return this.extract(resolved.attachments, resolved.skipped);
+    return this.extract(resolved.attachments, resolved.skipped, onProgress);
   }
 
-  async fromCollection(collection: Zotero.Collection): Promise<SelectionPreview> {
+  async fromCollection(
+    collection: Zotero.Collection,
+    onProgress?: SelectionProgressCallback,
+  ): Promise<SelectionPreview> {
     const items = await collectionItemsRecursive(collection);
     const resolved = await attachmentItemsForItems(items);
-    return this.extract(resolved.attachments, resolved.skipped);
+    return this.extract(resolved.attachments, resolved.skipped, onProgress);
   }
 
-  private async extract(attachments: Zotero.Item[], skipped: string[]): Promise<SelectionPreview> {
+  private async extract(
+    attachments: Zotero.Item[],
+    skipped: string[],
+    onProgress?: SelectionProgressCallback,
+  ): Promise<SelectionPreview> {
+    if (attachments.length > MAX_PODCAST_DOCUMENTS) {
+      throw new TooManyDocumentsError(attachments.length);
+    }
     const sources: SourceDocument[] = [];
-    for (const attachment of attachments) {
+    for (let index = 0; index < attachments.length; index += 1) {
+      const attachment = attachments[index];
+      onProgress?.(index + 1, attachments.length, displayTitle(attachment));
       const sourceID = `[D${sources.length + 1}]`;
       try {
         sources.push(await extractAttachment(attachment, sourceID));
