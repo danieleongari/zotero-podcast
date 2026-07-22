@@ -2,6 +2,14 @@
 
 All notable changes to Zotero Podcast will be documented in this file.
 
+## [0.2.0](https://github.com/danieleongari/zotero-podcast/compare/v0.1.2...v0.2.0) (2026-07-22)
+
+
+### Features
+
+* improve podcast output transparency and selection flow ([4fc182c](https://github.com/danieleongari/zotero-podcast/commit/4fc182c4a368f03dcd24f9ebddda86dd3b80347a))
+* improve podcast outputs and selection flow ([58468a6](https://github.com/danieleongari/zotero-podcast/commit/58468a65e378190eef9550c8ca353c910d4b8cd5))
+
 ## [0.1.2](https://github.com/danieleongari/zotero-podcast/compare/v0.1.1...v0.1.2) (2026-07-19)
 
 
